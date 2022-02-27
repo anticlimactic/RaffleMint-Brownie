@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract RaffleMint is ERC721, Ownable {
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
-    uint16 public constant MINT_SUPPLY = 5000; // immutable
+    uint16 public mintSupply; // immutable
 
     uint256 public depositStart;
     uint256 public depositEnd;
@@ -25,20 +25,25 @@ contract RaffleMint is ERC721, Ownable {
     event Withdraw(address addr, uint256 amount);
     event RaffleWinner(address addr);
 
-    constructor(string memory _name, string memory _symbol)
-        ERC721(_name, _symbol)
-    {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint16 _supply
+    ) ERC721(_name, _symbol) {
         depositStart = block.timestamp + 1 days;
         depositEnd = depositStart + 1 weeks;
         mintStart = depositEnd + 3 days;
         mintEnd = mintStart + 1 weeks;
         withdrawStart = depositEnd + 2 weeks;
+        mintSupply = _supply;
     }
 
     function selectWinners() public onlyOwner {
+        require(block.timestamp >= depositEnd, "before deposit end time");
+        require(block.timestamp < mintStart, "after mint start time");
         uint16 length = uint16(raffle.length);
         uint256 nonce = start;
-        for (uint16 i = 0; i < MINT_SUPPLY; i++) {
+        for (uint16 i = 0; i < mintSupply; i++) {
             nonce = uint256(keccak256(abi.encodePacked(nonce)));
             uint256 rng = nonce % (length - i);
             address winner = raffle[rng];
