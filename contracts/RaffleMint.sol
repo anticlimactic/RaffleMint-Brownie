@@ -54,6 +54,8 @@ contract RaffleMint is ERC721, Ownable {
     }
 
     receive() external payable {
+        require(block.timestamp >= depositStart, "before deposit start time");
+        require(block.timestamp < depositEnd, "after deposit end time");
         require(msg.value == MINT_VALUE, "incorrect amount");
         require(balances[msg.sender] == 0, "already deposited");
         balances[msg.sender] = msg.value;
