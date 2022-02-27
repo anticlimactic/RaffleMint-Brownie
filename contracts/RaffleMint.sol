@@ -29,10 +29,10 @@ contract RaffleMint is ERC721, Ownable {
         ERC721(_name, _symbol)
     {
         depositStart = block.timestamp + 1 days;
-        depositEnd = deposit_start + 1 weeks;
-        mintStart = deposit_end + 3 days;
-        mintEnd = mint_start + 1 weeks;
-        withdrawStart = deposit_end + 2 weeks;
+        depositEnd = depositStart + 1 weeks;
+        mintStart = depositEnd + 3 days;
+        mintEnd = mintStart + 1 weeks;
+        withdrawStart = depositEnd + 2 weeks;
     }
 
     function selectWinners() public onlyOwner {
@@ -40,7 +40,7 @@ contract RaffleMint is ERC721, Ownable {
         uint256 nonce = start;
         for (uint16 i = 0; i < MINT_SUPPLY; i++) {
             nonce = uint256(keccak256(abi.encodePacked(nonce)));
-            uint256 rng = nonce % (raffle_len - i);
+            uint256 rng = nonce % (length - i);
             address winner = raffle[rng];
             unchecked {
                 balances[address(this)] += balances[winner];
@@ -62,7 +62,7 @@ contract RaffleMint is ERC721, Ownable {
     }
 
     function withdraw() public payable {
-        require(block.timestamp > withdraw_start, "cannot withdraw yet");
+        require(block.timestamp > withdrawStart, "cannot withdraw yet");
         uint256 amount = balances[msg.sender];
         require(amount > 0, "no balance");
         balances[msg.sender] = 0;
@@ -72,7 +72,7 @@ contract RaffleMint is ERC721, Ownable {
     }
 
     function ownerWithdraw() public payable onlyOwner {
-        require(block.timestamp > withdraw_start, "cannot withdraw yet");
+        require(block.timestamp > withdrawStart, "cannot withdraw yet");
         address mintAddress = address(this);
         uint256 amount = balances[mintAddress];
         require(amount > 0, "no balance");
