@@ -4,6 +4,7 @@ import brownie
 DAY = 3600 * 24
 WEEK = DAY * 7
 
+
 def test_deposit(raffle_mint, alice):
     with brownie.reverts("incorrect amount"):
         alice.transfer(raffle_mint.address, "1 ether")

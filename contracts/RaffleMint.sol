@@ -7,34 +7,34 @@ contract RaffleMint is ERC721, Ownable {
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
     uint16 public constant MINT_SUPPLY = 5000; // immutable
 
-    uint256 public deposit_start;
-    uint256 public deposit_end;
-    uint256 public mint_start;
-    uint256 public mint_end;
-    uint256 public withdraw_start;
+    uint256 public depositStart;
+    uint256 public depositEnd;
+    uint256 public mintStart;
+    uint256 public mintEnd;
+    uint256 public withdrawStart;
 
     address[] public raffle;
 
-    mapping (address => bool) raffleWinners;
-    mapping (address => uint256) balances;
+    mapping (address => bool) public raffleWinners;
+    mapping (address => uint256) public balances;
 
     // placeholder nonce
-    uint256 start = 0;
+    uint256 public start = 0;
 
     event Deposit(address addr, uint256 amount);
     event Withdraw(address addr, uint256 amount);
     event RaffleWinner(address addr);
 
     constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
-        deposit_start = block.timestamp + 1 days;
-        deposit_end = deposit_start + 1 weeks;
-        mint_start = deposit_end + 3 days;
-        mint_end = mint_start + 1 weeks;
-        withdraw_start = deposit_end + 2 weeks;
+        depositStart = block.timestamp + 1 days;
+        depositEnd = deposit_start + 1 weeks;
+        mintStart = deposit_end + 3 days;
+        mintEnd = mint_start + 1 weeks;
+        withdrawStart = deposit_end + 2 weeks;
     }
 
     function selectWinners() public onlyOwner {
-        uint16 raffle_len = uint16(raffle.length);
+        uint16 length = uint16(raffle.length);
         uint256 nonce = start;
         for (uint16 i = 0; i < MINT_SUPPLY; i++) {
             nonce = uint256(keccak256(abi.encodePacked(nonce)));
@@ -45,7 +45,7 @@ contract RaffleMint is ERC721, Ownable {
             }
             balances[winner] = 0;
             raffleWinners[winner] = true;
-            raffle[rng] = raffle[raffle_len - i - 1];
+            raffle[rng] = raffle[length - i - 1];
             raffle.pop();
             emit RaffleWinner(winner);
         }
@@ -65,7 +65,7 @@ contract RaffleMint is ERC721, Ownable {
         require(amount > 0, "no balance");
         balances[msg.sender] = 0;
         (bool success, ) = msg.sender.call{value: amount}("");
-        require(success);
+        require(success, "withdraw failed");
         emit Withdraw(msg.sender, amount);
     }
 
@@ -76,7 +76,7 @@ contract RaffleMint is ERC721, Ownable {
         require(amount > 0, "no balance");
         balances[mintAddress] = 0;
         (bool success, ) = msg.sender.call{value: amount}("");
-        require(success);
+        require(success, "withdraw failed");
         emit Withdraw(msg.sender, amount);
     }
 
