@@ -15,8 +15,8 @@ contract RaffleMint is ERC721, Ownable {
 
     address[] public raffle;
 
-    mapping (address => bool) public raffleWinners;
-    mapping (address => uint256) public balances;
+    mapping(address => bool) public raffleWinners;
+    mapping(address => uint256) public balances;
 
     // placeholder nonce
     uint256 public start = 0;
@@ -25,7 +25,9 @@ contract RaffleMint is ERC721, Ownable {
     event Withdraw(address addr, uint256 amount);
     event RaffleWinner(address addr);
 
-    constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
+    constructor(string memory _name, string memory _symbol)
+        ERC721(_name, _symbol)
+    {
         depositStart = block.timestamp + 1 days;
         depositEnd = deposit_start + 1 weeks;
         mintStart = deposit_end + 3 days;
