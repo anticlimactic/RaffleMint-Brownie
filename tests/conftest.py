@@ -13,4 +13,4 @@ def alice(accounts):
 
 @pytest.fixture
 def raffle_mint(RaffleMint, gov):
-    yield gov.deploy(RaffleMint, "name", "symbol")
+    yield gov.deploy(RaffleMint, "name", "symbol", 5)
