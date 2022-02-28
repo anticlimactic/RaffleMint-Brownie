@@ -7,10 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract RaffleMint is ERC721, Ownable {
     /// @notice mint cost per NFT
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
-    uint16 public 
-    
-    
-    ; 
+    uint16 public mintSupply;
 
     /// @notice deposit ether start time
     uint256 public depositStart;
