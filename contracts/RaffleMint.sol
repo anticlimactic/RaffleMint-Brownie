@@ -3,19 +3,30 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/// @title ERC721 with Raffle
 contract RaffleMint is ERC721, Ownable {
+    /// @notice mint cost per NFT
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
+    /// @notice raffle mint supply
     uint16 public constant MINT_SUPPLY = 5000; // immutable
 
+    /// @notice deposit ether start time
     uint256 public depositStart;
+    /// @notice deposit ether end time
     uint256 public depositEnd;
+    /// @notice raffle mint start time
     uint256 public mintStart;
+    /// @notice raffle mint end time
     uint256 public mintEnd;
+    /// @notice withdraw ether start time
     uint256 public withdrawStart;
 
+    /// @notice winners chosen from array of raffle participants
     address[] public raffle;
 
+    /// @notice whether participant won or not
     mapping(address => bool) public raffleWinners;
+    /// @notice ether owed balances
     mapping(address => uint256) public balances;
 
     // placeholder nonce
@@ -35,6 +46,8 @@ contract RaffleMint is ERC721, Ownable {
         withdrawStart = depositEnd + 2 weeks;
     }
 
+    /// @notice select winners
+    /// @dev choose winner from raffle, remove winner from raffle, repeat
     function selectWinners() public onlyOwner {
         uint16 length = uint16(raffle.length);
         uint256 nonce = start;
@@ -53,6 +66,7 @@ contract RaffleMint is ERC721, Ownable {
         }
     }
 
+    /// @notice receive ether from raffle participants
     receive() external payable {
         require(block.timestamp >= depositStart, "before deposit start time");
         require(block.timestamp < depositEnd, "after deposit end time");
@@ -63,6 +77,7 @@ contract RaffleMint is ERC721, Ownable {
         emit Deposit(msg.sender, msg.value);
     }
 
+    /// @notice withdraw ether from raffle
     function withdraw() public payable {
         require(block.timestamp > withdrawStart, "cannot withdraw yet");
         uint256 amount = balances[msg.sender];
@@ -73,6 +88,7 @@ contract RaffleMint is ERC721, Ownable {
         emit Withdraw(msg.sender, amount);
     }
 
+    /// @notice owner withdraws ether from raffle
     function ownerWithdraw() public payable onlyOwner {
         require(block.timestamp > withdrawStart, "cannot withdraw yet");
         address mintAddress = address(this);
