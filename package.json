@@ -1,9 +1,9 @@
 {
     "name": "rafflemint",
     "scripts": {
-        "format": "prettier --write 'contracts/**/*.(sol|json)' --verbose",
-        "format:check": "prettier --check 'contracts/**/*.*(sol|json)'",
-        "lint": "solhint 'contracts/**/*.sol'"
+        "format": "prettier --write contracts/**/*.sol --verbose",
+        "format:check": "prettier --check contracts/**/*.sol",
+        "lint": "solhint contracts/**/*.sol"
     },
     "devDependencies": {
         "prettier": "^2.5.1",

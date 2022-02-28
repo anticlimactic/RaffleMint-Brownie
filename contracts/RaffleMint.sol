@@ -2,9 +2,15 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 /// @title ERC721 with Raffle
 contract RaffleMint is ERC721, Ownable {
+
+    using Counters for Counters.Counter;
+
+    Counters.Counter private _tokenIdCounter;
+
     /// @notice mint cost per NFT
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
     /// @notice total raffle mint supply
@@ -36,6 +42,7 @@ contract RaffleMint is ERC721, Ownable {
 
     event Deposit(address addr, uint256 amount);
     event Withdraw(address addr, uint256 amount);
+    event Minted(address addr, uint256 tokenId);
     event RaffleWinner(address addr);
 
     constructor(
@@ -49,6 +56,25 @@ contract RaffleMint is ERC721, Ownable {
         mintEnd = mintStart + 1 weeks;
         withdrawStart = depositEnd + 2 weeks;
         mintSupply = _supply;
+    }
+    
+    /// @notice Function used to mint a token to a raffle winner.
+    function claimToken() public {
+        require(raffleWinners[msg.sender], "caller did not win");
+        require(
+            block.timestamp >= mintStart && mintEnd >= block.timestamp,
+            "claiming is not active"
+        );
+
+        uint tokenIndex = _tokenIdCounter.current() + 1;
+
+        require(MINT_SUPPLY >= tokenIndex, "minted token exceeds supply");
+
+        // Increment total supply and mint token to user.
+        _tokenIdCounter.increment();
+        _safeMint(msg.sender, tokenIndex);
+
+        emit Minted(msg.sender, tokenIndex);
     }
 
     /// @notice select winners
