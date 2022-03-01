@@ -7,7 +7,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract RaffleMint is ERC721, Ownable {
     /// @notice mint cost per NFT
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
+    /// @notice total raffle mint supply
     uint16 public mintSupply;
+    /// @notice minted raffle mint count
+    uint16 public minted;
 
     /// @notice deposit ether start time
     uint256 public depositStart;
@@ -29,7 +32,7 @@ contract RaffleMint is ERC721, Ownable {
     mapping(address => uint256) public balances;
 
     // placeholder nonce
-    uint256 public start = 0;
+    uint256 public nonceCache = 0;
 
     event Deposit(address addr, uint256 amount);
     event Withdraw(address addr, uint256 amount);
@@ -50,12 +53,13 @@ contract RaffleMint is ERC721, Ownable {
 
     /// @notice select winners
     /// @dev choose winner from raffle, remove winner from raffle, repeat
-    function selectWinners() public onlyOwner {
+    function selectWinners(uint16 amount) public onlyOwner {
         require(block.timestamp >= depositEnd, "before deposit end time");
         require(block.timestamp < mintStart, "after mint start time");
+        require(minted + amount <= mintSupply, "out of mints");
         uint16 length = uint16(raffle.length);
-        uint256 nonce = start;
-        for (uint16 i = 0; i < mintSupply; i++) {
+        uint256 nonce = nonceCache;
+        for (uint16 i = 0; i < amount; i++) {
             nonce = uint256(keccak256(abi.encodePacked(nonce)));
             uint256 rng = nonce % (length - i);
             address winner = raffle[rng];
@@ -68,6 +72,8 @@ contract RaffleMint is ERC721, Ownable {
             raffle.pop();
             emit RaffleWinner(winner);
         }
+        minted = minted + amount;
+        nonceCache = nonce;
     }
 
     /// @notice receive ether from raffle participants

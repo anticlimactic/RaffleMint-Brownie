@@ -70,25 +70,39 @@ def test_owner_withdraw_with_no_balance(raffle_mint, gov, chain):
 
 def test_select_winners(raffle_mint, accounts, gov, chain):
     chain.sleep(DAY)
-    for account in accounts[1:10]:
+    accounts = accounts[1:10]  # remove gov from account list
+    for account in accounts:
         account.transfer(raffle_mint.address, "0.08 ether")
     with brownie.reverts("before deposit end time"):
-        raffle_mint.selectWinners({"from": gov})
+        raffle_mint.selectWinners(1, {"from": gov})
 
     chain.sleep(WEEK)
+    with brownie.reverts("out of mints"):
+        raffle_mint.selectWinners(10, {"from": gov})
 
-    raffle_mint.selectWinners({"from": gov})
+    tx = raffle_mint.selectWinners(1, {"from": gov})
+    assert raffle_mint.ethBalanceOf(raffle_mint.address) == "0.08 ether"
+
+    nonce = 0
+    nonce = brownie.web3.toInt(brownie.web3.solidityKeccak(["uint256"], [nonce]))
+    index = nonce % 9
+    assert raffle_mint.ethBalanceOf(accounts[index]) == 0
+    event = tx.events["RaffleWinner"]
+    print([account for account in accounts])
+    assert event["addr"] == accounts[index]
+
+    raffle_mint.selectWinners(4, {"from": gov})
 
     assert raffle_mint.balance() == "0.72 ether"
     assert raffle_mint.ethBalanceOf(raffle_mint.address) == "0.4 ether"
 
-    nonce = 0
-
-    for i in range(1, 5):
+    for i in range(2, 5):
         nonce = brownie.web3.toInt(brownie.web3.solidityKeccak(["uint256"], [nonce]))
         index = nonce % (9 - i)
         assert raffle_mint.ethBalanceOf(accounts[index]) == 0
 
+    with brownie.reverts("out of mints"):
+        raffle_mint.selectWinners(1, {"from": gov})
     with brownie.reverts("cannot withdraw yet"):
         raffle_mint.ownerWithdraw({"from": gov})
 
@@ -110,4 +124,4 @@ def test_select_winners_after_mint_start(raffle_mint, accounts, gov, chain):
     chain.sleep(WEEK * 2)
 
     with brownie.reverts("after mint start time"):
-        raffle_mint.selectWinners({"from": gov})
+        raffle_mint.selectWinners(1, {"from": gov})
