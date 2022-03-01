@@ -125,3 +125,36 @@ def test_select_winners_after_mint_start(raffle_mint, accounts, gov, chain):
 
     with brownie.reverts("after mint start time"):
         raffle_mint.selectWinners(1, {"from": gov})
+
+
+def test_claim_token(raffle_mint, accounts, gov, chain):
+    # Wait 1 day for depositing to start.
+    chain.sleep(DAY)
+
+    # Enter with 5 accounts.
+    for account in accounts[1:6]:
+        account.transfer(raffle_mint.address, "0.08 ether")
+
+    # Wait 1 week to start drawing.
+    chain.sleep(WEEK)
+
+    with brownie.reverts("out of mints"):
+        raffle_mint.selectWinners(6, {"from": gov})
+
+    # Select 5 winners, all should win.
+    raffle_mint.selectWinners(3, {"from": gov})
+
+    # Wait 3 days to start minting.
+    chain.sleep(3 * DAY)
+
+    # Attempt to claim with losing account.
+    with brownie.reverts("caller did not win"):
+        raffle_mint.claimToken({"from": accounts[7]})
+
+    # Claim token with winning account.
+    winner = accounts[1]
+    raffle_mint.claimToken({"from": winner})
+
+    # Assert token has been minted.
+    assert raffle_mint.balanceOf(winner) == 1
+    assert raffle_mint.raffleMinted() == 1
