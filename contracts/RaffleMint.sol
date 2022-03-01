@@ -3,9 +3,12 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
 /// @title ERC721 with Raffle
-contract RaffleMint is ERC721, Ownable {
+contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
     /// @notice mint cost per NFT
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
     /// @notice total raffle mint supply
@@ -34,6 +37,11 @@ contract RaffleMint is ERC721, Ownable {
 
     // placeholder nonce
     uint256 public nonceCache = 0;
+    bool public fetchedNonce = false;
+    address constant vrfCoordinator = 0x271682DEB8C4E0901D1a1550aD2e64D568E69909;
+    address constant link = 0x514910771AF9Ca656af840dff83E8264EcF986CA;
+    bytes32 constant keyHash = 0x8af398995b04c28e9951adb9721ef74c74f93e6a478f39e7e0777be13527e7ef;
+    uint256 constant fee = 0.25 * 10 ** 18;
 
     event Deposit(address addr, uint256 amount);
     event Withdraw(address addr, uint256 amount);
@@ -44,7 +52,7 @@ contract RaffleMint is ERC721, Ownable {
         string memory _name,
         string memory _symbol,
         uint16 _supply
-    ) ERC721(_name, _symbol) {
+    ) ERC721(_name, _symbol) VRFConsumerBase(vrfCoordinator, link) {
         depositStart = block.timestamp + 1 days;
         depositEnd = depositStart + 1 weeks;
         mintStart = depositEnd + 3 days;
@@ -53,9 +61,24 @@ contract RaffleMint is ERC721, Ownable {
         mintSupply = _supply;
     }
 
+   function getRandomNumber() public returns (bytes32 requestId) {
+        require(LINK.balanceOf(address(this)) >= fee, "not enough LINK");
+        return requestRandomness(keyHash, fee);
+    }
+
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
+        nonceCache = randomness;
+        fetchedNonce = true;
+    }
+
+    function fetchNonce() external onlyOwner {
+        getRandomNumber();
+    }
+
     /// @notice select winners
     /// @dev choose winner from raffle, remove winner from raffle, repeat
     function selectWinners(uint16 amount) public onlyOwner {
+        require(fetchedNonce, "vrf not called yet");
         require(block.timestamp >= depositEnd, "before deposit end time");
         require(block.timestamp < mintStart, "after mint start time");
         require(minted + amount <= mintSupply, "out of mints");
