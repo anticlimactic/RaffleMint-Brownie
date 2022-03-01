@@ -68,7 +68,7 @@ contract RaffleMint is ERC721, Ownable {
 
         uint tokenIndex = _tokenIdCounter.current() + 1;
 
-        require(MINT_SUPPLY >= tokenIndex, "minted token exceeds supply");
+        require(mintSupply >= minted + tokenIndex, "minted token exceeds supply");
 
         // Increment total supply and mint token to user.
         _tokenIdCounter.increment();
@@ -138,5 +138,12 @@ contract RaffleMint is ERC721, Ownable {
 
     function ethBalanceOf(address addr) public view returns (uint256) {
         return balances[addr];
+    }
+
+    /// @notice Function used to return the amount of tokens that have been minted
+    /// from the raffle.
+    /// @return Returns the number of tokens that have been minted from the raffle.
+    function raffleMinted() public view returns (uint256) {
+        return _tokenIdCounter.current();
     }
 }
