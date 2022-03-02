@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -36,6 +37,7 @@ contract RaffleMint is ERC721, Ownable {
 
     event Deposit(address addr, uint256 amount);
     event Withdraw(address addr, uint256 amount);
+    event Minted(address addr, uint256 tokenId);
     event RaffleWinner(address addr);
 
     constructor(
@@ -112,5 +114,22 @@ contract RaffleMint is ERC721, Ownable {
 
     function ethBalanceOf(address addr) public view returns (uint256) {
         return balances[addr];
+    }
+
+    /// @notice Function used to mint a token to a raffle winner.
+    /// @param _to The receiving token address.
+    /// @param _tokenId The token ID to be minted to `_to`.
+    /// @dev This function would be called in an implementation of
+    /// the inheriting contract.
+    function _claimToken(address _to, uint256 _tokenId) internal {
+        require(raffleWinners[_to], "caller did not win");
+        require(
+            block.timestamp >= mintStart && mintEnd >= block.timestamp,
+            "claiming is not active"
+        );
+
+        _safeMint(_to, _tokenId);
+
+        emit Minted(_to, _tokenId);
     }
 }
