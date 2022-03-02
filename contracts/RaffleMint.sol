@@ -77,15 +77,16 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
     }
 
     function fetchNonce() external onlyOwner returns (bytes32) {
+        require(block.timestamp >= depositEnd, "before deposit end time");
         return getRandomNumber();
     }
 
     /// @notice select winners
     /// @dev choose winner from raffle, remove winner from raffle, repeat
     function selectWinners(uint16 amount) public onlyOwner {
-        require(fetchedNonce, "vrf not called yet");
         require(block.timestamp >= depositEnd, "before deposit end time");
         require(block.timestamp < mintStart, "after mint start time");
+        require(fetchedNonce, "vrf not called yet");
         require(minted + amount <= mintSupply, "out of mints");
         uint16 length = uint16(raffle.length);
         uint256 nonce = nonceCache;

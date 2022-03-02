@@ -84,6 +84,14 @@ def test_select_winners(
 
     for account in accounts:
         account.transfer(raffle_mint.address, "0.08 ether")
+    with brownie.reverts("before deposit end time"):
+        raffle_mint.fetchNonce({"from": gov})
+    with brownie.reverts("before deposit end time"):
+        raffle_mint.selectWinners(1, {"from": gov})
+
+    chain.sleep(WEEK)
+    chain.mine()
+
     with brownie.reverts("vrf not called yet"):
         raffle_mint.selectWinners(1, {"from": gov})
 
@@ -97,11 +105,6 @@ def test_select_winners(
     assert raffle_mint.nonceCache() > 0
     nonce = raffle_mint.nonceCache()
 
-    with brownie.reverts("before deposit end time"):
-        raffle_mint.selectWinners(1, {"from": gov})
-
-    chain.sleep(WEEK)
-    chain.mine()
     with brownie.reverts("out of mints"):
         raffle_mint.selectWinners(10, {"from": gov})
 
@@ -142,9 +145,7 @@ def test_select_winners(
         raffle_mint.ownerWithdraw({"from": gov})
 
 
-def test_select_winners_after_mint_start(
-    raffle_mint, link_token, mock_vrf_coordinator, gov, accounts, chain
-):
+def test_select_winners_after_mint_start(raffle_mint, gov, accounts, chain):
     chain.sleep(DAY)
     chain.mine()
     for account in accounts[1:10]:
@@ -152,15 +153,6 @@ def test_select_winners_after_mint_start(
 
     chain.sleep(WEEK * 2)
     chain.mine()
-
-    link_token.transfer(raffle_mint.address, 10**18, {"from": gov})
-    tx_receipt = raffle_mint.fetchNonce({"from": gov})
-    request_id = tx_receipt.return_value
-    assert isinstance(tx_receipt.txid, str)
-
-    mock_vrf_coordinator.callBackWithRandomness(
-        request_id, 777, raffle_mint.address, {"from": gov}
-    )
 
     with brownie.reverts("after mint start time"):
         raffle_mint.selectWinners(1, {"from": gov})
