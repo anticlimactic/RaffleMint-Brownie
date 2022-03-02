@@ -14,6 +14,7 @@ def alice(accounts):
     yield accounts[1]
 
 
+@pytest.fixture()
 def raffle_mint(RaffleMint, link_token, mock_vrf_coordinator, gov):
     yield gov.deploy(
         RaffleMint, "name", "symbol", 5, 0, mock_vrf_coordinator, link_token, 10**17
@@ -22,8 +23,9 @@ def raffle_mint(RaffleMint, link_token, mock_vrf_coordinator, gov):
 
 @pytest.fixture
 def test_contract(Test, link_token, mock_vrf_coordinator, gov):
-    yield gov.deploy(Test, "Test", "TEST", 5, 0, mock_vrf_coordinator, link_token, 10**17)
-
+    yield gov.deploy(
+        Test, "Test", "TEST", 0, mock_vrf_coordinator, link_token, 10**17
+    )
 
 
 @pytest.fixture

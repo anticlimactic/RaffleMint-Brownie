@@ -158,8 +158,11 @@ def test_select_winners_after_mint_start(raffle_mint, gov, accounts, chain):
         raffle_mint.selectWinners(1, {"from": gov})
 
 
-def test_claim_token(test_contract, accounts, gov, chain):
+def test_claim_token(
+    test_contract, link_token, mock_vrf_coordinator, accounts, gov, chain
+):
     chain.sleep(DAY)
+    chain.mine()
 
     for account in accounts[1:6]:
         account.transfer(test_contract.address, "0.08 ether")
@@ -167,6 +170,14 @@ def test_claim_token(test_contract, accounts, gov, chain):
     assert test_contract.balance() == "0.40 ether"
 
     chain.sleep(WEEK)
+    chain.mine()
+
+    link_token.transfer(test_contract.address, 10**18, {"from": gov})
+    tx_receipt = test_contract.fetchNonce({"from": gov})
+    request_id = tx_receipt.return_value
+    mock_vrf_coordinator.callBackWithRandomness(
+        request_id, 777, test_contract.address, {"from": gov}
+    )
 
     with brownie.reverts("out of mints"):
         test_contract.selectWinners(6, {"from": gov})
@@ -174,6 +185,7 @@ def test_claim_token(test_contract, accounts, gov, chain):
     test_contract.selectWinners(3, {"from": gov})
 
     chain.sleep(3 * DAY)
+    chain.mine()
 
     with brownie.reverts("caller did not win"):
         test_contract.mintRaffle({"from": accounts[7]})

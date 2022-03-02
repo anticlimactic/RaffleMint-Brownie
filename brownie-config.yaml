@@ -18,5 +18,3 @@ compiler:
 reports:
   exclude_contracts:
     - ERC721
-
-dotenv: .env
