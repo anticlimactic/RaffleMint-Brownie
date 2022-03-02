@@ -127,26 +127,27 @@ def test_select_winners_after_mint_start(raffle_mint, accounts, gov, chain):
         raffle_mint.selectWinners(1, {"from": gov})
 
 
-def test_claim_token(raffle_mint, accounts, gov, chain):
+def test_claim_token(test_contract, accounts, gov, chain):
     chain.sleep(DAY)
 
     for account in accounts[1:6]:
-        account.transfer(raffle_mint.address, "0.08 ether")
+        account.transfer(test_contract.address, "0.08 ether")
+
+    assert test_contract.balance() == "0.40 ether"
 
     chain.sleep(WEEK)
 
     with brownie.reverts("out of mints"):
-        raffle_mint.selectWinners(6, {"from": gov})
+        test_contract.selectWinners(6, {"from": gov})
 
-    raffle_mint.selectWinners(3, {"from": gov})
+    test_contract.selectWinners(3, {"from": gov})
 
     chain.sleep(3 * DAY)
 
     with brownie.reverts("caller did not win"):
-        raffle_mint.claimToken({"from": accounts[7]})
+        test_contract.mintRaffle({"from": accounts[7]})
 
     winner = accounts[1]
-    raffle_mint.claimToken({"from": winner})
+    test_contract.mintRaffle({"from": winner})
 
-    assert raffle_mint.balanceOf(winner) == 1
-    assert raffle_mint.raffleMinted() == 1
+    assert test_contract.balanceOf(winner) == 1
