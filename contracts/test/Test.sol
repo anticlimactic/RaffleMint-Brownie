@@ -11,8 +11,23 @@ contract Test is RaffleMint {
 
     uint16 public constant MAX_SUPPLY = 5;
 
-    constructor(string memory _name, string memory _symbol)
-        RaffleMint(_name, _symbol, MAX_SUPPLY)
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        bytes32 _keyhash,
+        address _vrfCoordinator,
+        address _link,
+        uint256 _fee
+    )
+        RaffleMint(
+            _name,
+            _symbol,
+            MAX_SUPPLY,
+            _keyhash,
+            _vrfCoordinator,
+            _link,
+            _fee
+        )
     {}
 
     function mintRaffle() public {

@@ -3,9 +3,10 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
 /// @title ERC721 with Raffle
-contract RaffleMint is ERC721, Ownable {
+contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
     /// @notice mint cost per NFT
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
     /// @notice total raffle mint supply
@@ -34,6 +35,9 @@ contract RaffleMint is ERC721, Ownable {
 
     // placeholder nonce
     uint256 public nonceCache = 0;
+    bool public fetchedNonce = false;
+    bytes32 public keyhash; // immutable;
+    uint256 public fee; // immutable;
 
     event Deposit(address addr, uint256 amount);
     event Withdraw(address addr, uint256 amount);
@@ -43,14 +47,38 @@ contract RaffleMint is ERC721, Ownable {
     constructor(
         string memory _name,
         string memory _symbol,
-        uint16 _supply
-    ) ERC721(_name, _symbol) {
+        uint16 _supply,
+        bytes32 _keyhash,
+        address _vrfCoordinator,
+        address _link,
+        uint256 _fee
+    ) ERC721(_name, _symbol) VRFConsumerBase(_vrfCoordinator, _link) {
         depositStart = block.timestamp + 1 days;
         depositEnd = depositStart + 1 weeks;
         mintStart = depositEnd + 3 days;
         mintEnd = mintStart + 1 weeks;
         withdrawStart = depositEnd + 2 weeks;
         mintSupply = _supply;
+        keyhash = _keyhash;
+        fee = _fee;
+    }
+
+    function getRandomNumber() public onlyOwner returns (bytes32 requestId) {
+        require(LINK.balanceOf(address(this)) >= fee, "not enough LINK");
+        return requestRandomness(keyhash, fee);
+    }
+
+    function fulfillRandomness(bytes32 requestId, uint256 randomness)
+        internal
+        override
+    {
+        nonceCache = randomness;
+        fetchedNonce = true;
+    }
+
+    function fetchNonce() external onlyOwner returns (bytes32) {
+        require(block.timestamp >= depositEnd, "before deposit end time");
+        return getRandomNumber();
     }
 
     /// @notice select winners
@@ -58,6 +86,7 @@ contract RaffleMint is ERC721, Ownable {
     function selectWinners(uint16 amount) public onlyOwner {
         require(block.timestamp >= depositEnd, "before deposit end time");
         require(block.timestamp < mintStart, "after mint start time");
+        require(fetchedNonce, "vrf not called yet");
         require(minted + amount <= mintSupply, "out of mints");
         uint16 length = uint16(raffle.length);
         uint256 nonce = nonceCache;
