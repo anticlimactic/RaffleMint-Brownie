@@ -11,7 +11,6 @@ dependencies:
 
 compiler:
   solc:
-    version: 0.8.11
     remappings:
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.5.0"
       - "@chainlink=smartcontractkit/chainlink@1.1.1"

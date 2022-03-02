@@ -3,8 +3,6 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
 /// @title ERC721 with Raffle
@@ -38,10 +36,8 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
     // placeholder nonce
     uint256 public nonceCache = 0;
     bool public fetchedNonce = false;
-    address constant vrfCoordinator = 0x271682DEB8C4E0901D1a1550aD2e64D568E69909;
-    address constant link = 0x514910771AF9Ca656af840dff83E8264EcF986CA;
-    bytes32 constant keyHash = 0x8af398995b04c28e9951adb9721ef74c74f93e6a478f39e7e0777be13527e7ef;
-    uint256 constant fee = 0.25 * 10 ** 18;
+    bytes32 public keyhash; // immutable;
+    uint256 public fee; // immutable;
 
     event Deposit(address addr, uint256 amount);
     event Withdraw(address addr, uint256 amount);
@@ -51,28 +47,37 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
     constructor(
         string memory _name,
         string memory _symbol,
-        uint16 _supply
-    ) ERC721(_name, _symbol) VRFConsumerBase(vrfCoordinator, link) {
+        uint16 _supply,
+        bytes32 _keyhash,
+        address _vrfCoordinator,
+        address _link,
+        uint256 _fee
+    ) ERC721(_name, _symbol) VRFConsumerBase(_vrfCoordinator, _link) {
         depositStart = block.timestamp + 1 days;
         depositEnd = depositStart + 1 weeks;
         mintStart = depositEnd + 3 days;
         mintEnd = mintStart + 1 weeks;
         withdrawStart = depositEnd + 2 weeks;
         mintSupply = _supply;
+        keyhash = _keyhash;
+        fee = _fee;
     }
 
-   function getRandomNumber() public returns (bytes32 requestId) {
+    function getRandomNumber() public onlyOwner returns (bytes32 requestId) {
         require(LINK.balanceOf(address(this)) >= fee, "not enough LINK");
-        return requestRandomness(keyHash, fee);
+        return requestRandomness(keyhash, fee);
     }
 
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
+    function fulfillRandomness(bytes32 requestId, uint256 randomness)
+        internal
+        override
+    {
         nonceCache = randomness;
         fetchedNonce = true;
     }
 
-    function fetchNonce() external onlyOwner {
-        getRandomNumber();
+    function fetchNonce() external onlyOwner returns (bytes32) {
+        return getRandomNumber();
     }
 
     /// @notice select winners
