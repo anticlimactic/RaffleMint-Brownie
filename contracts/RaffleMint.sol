@@ -1,16 +1,11 @@
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 /// @title ERC721 with Raffle
 contract RaffleMint is ERC721, Ownable {
-
-    using Counters for Counters.Counter;
-
-    Counters.Counter private _tokenIdCounter;
-
     /// @notice mint cost per NFT
     uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
     /// @notice total raffle mint supply
@@ -56,25 +51,6 @@ contract RaffleMint is ERC721, Ownable {
         mintEnd = mintStart + 1 weeks;
         withdrawStart = depositEnd + 2 weeks;
         mintSupply = _supply;
-    }
-    
-    /// @notice Function used to mint a token to a raffle winner.
-    function claimToken() public {
-        require(raffleWinners[msg.sender], "caller did not win");
-        require(
-            block.timestamp >= mintStart && mintEnd >= block.timestamp,
-            "claiming is not active"
-        );
-
-        uint tokenIndex = _tokenIdCounter.current() + 1;
-
-        require(mintSupply >= minted + tokenIndex, "minted token exceeds supply");
-
-        // Increment total supply and mint token to user.
-        _tokenIdCounter.increment();
-        _safeMint(msg.sender, tokenIndex);
-
-        emit Minted(msg.sender, tokenIndex);
     }
 
     /// @notice select winners
@@ -140,10 +116,20 @@ contract RaffleMint is ERC721, Ownable {
         return balances[addr];
     }
 
-    /// @notice Function used to return the amount of tokens that have been minted
-    /// from the raffle.
-    /// @return Returns the number of tokens that have been minted from the raffle.
-    function raffleMinted() public view returns (uint256) {
-        return _tokenIdCounter.current();
+    /// @notice Function used to mint a token to a raffle winner.
+    /// @param _to The receiving token address.
+    /// @param _tokenId The token ID to be minted to `_to`.
+    /// @dev This function would be called in an implementation of
+    /// the inheriting contract.
+    function _claimToken(address _to, uint256 _tokenId) internal {
+        require(raffleWinners[_to], "caller did not win");
+        require(
+            block.timestamp >= mintStart && mintEnd >= block.timestamp,
+            "claiming is not active"
+        );
+
+        _safeMint(_to, _tokenId);
+
+        emit Minted(_to, _tokenId);
     }
 }
