@@ -2,6 +2,9 @@ import pytest
 
 DECIMALS = 18
 INITIAL_VALUE = "2000 ether"
+DAY = 3600 * 24
+WEEK = DAY * 7
+MINT_PRICE = 80000000000000000  # 0.08 Ether
 
 
 @pytest.fixture()
@@ -51,3 +54,24 @@ def mock_oracle(MockOracle, gov, link_token):
 @pytest.fixture(scope="module", autouse=True)
 def shared_setup(module_isolation):
     pass
+
+
+@pytest.fixture
+def configured_raffle(Test, chain, mock_vrf_coordinator, link_token, gov):
+    test_contract = gov.deploy(
+        Test, "Test", "TEST", 0, mock_vrf_coordinator, link_token, 10**17
+    )
+
+    chain_time = chain.time()
+
+    depositStart = chain_time + DAY
+    depositEnd = depositStart + WEEK
+    mintStart = depositEnd + 3 * DAY
+    mintEnd = mintStart + WEEK
+    withdrawStart = depositEnd + 2 * WEEK
+
+    test_contract.configureRaffle(
+        MINT_PRICE, depositStart, depositEnd, mintStart, mintEnd, withdrawStart, 5, 0
+    )
+
+    yield test_contract
