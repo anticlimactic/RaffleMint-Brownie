@@ -8,22 +8,24 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 /// @title ERC721 with Raffle
 contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
     /// @notice mint cost per NFT
-    uint256 public constant MINT_VALUE = 0.08 * 1 ether; // immutable
-    /// @notice total raffle mint supply
-    uint16 public mintSupply;
+    uint256 public constant MINT_VALUE = 0.08 ether; // immutable
+
     /// @notice minted raffle mint count
     uint16 public minted;
 
-    /// @notice deposit ether start time
-    uint256 public depositStart;
-    /// @notice deposit ether end time
-    uint256 public depositEnd;
-    /// @notice raffle mint start time
-    uint256 public mintStart;
-    /// @notice raffle mint end time
-    uint256 public mintEnd;
-    /// @notice withdraw ether start time
-    uint256 public withdrawStart;
+    /// @notice Struct used for configuring raffle
+    struct Raffle {
+        uint64 mintValue;
+        uint32 depositStart;
+        uint32 depositEnd;
+        uint32 mintStart;
+        uint32 mintEnd;
+        uint32 withdrawStart;
+        uint16 mintSupply;
+        uint16 minted;
+    }
+
+    Raffle public raffleConfig;
 
     /// @notice winners chosen from array of raffle participants
     address[] public raffle;
@@ -53,14 +55,40 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
         address _link,
         uint256 _fee
     ) ERC721(_name, _symbol) VRFConsumerBase(_vrfCoordinator, _link) {
-        depositStart = block.timestamp + 1 days;
-        depositEnd = depositStart + 1 weeks;
-        mintStart = depositEnd + 3 days;
-        mintEnd = mintStart + 1 weeks;
-        withdrawStart = depositEnd + 2 weeks;
-        mintSupply = _supply;
+        raffleConfig.mintSupply = _supply;
         keyhash = _keyhash;
         fee = _fee;
+    }
+
+    /// @notice Function used to configure a raffle
+    function configureRaffle(
+        uint64 _mintValue,
+        uint32 _depositStart,
+        uint32 _depositEnd,
+        uint32 _mintStart,
+        uint32 _mintEnd,
+        uint32 _withdrawStart,
+        uint16 _mintSupply,
+        uint16 _minted
+    ) public onlyOwner {
+        require(
+            _depositEnd > _depositStart,
+            "deposit period cannot start after end"
+        );
+        require(_mintEnd > _mintStart, "mint period cannot start after end");
+        require(
+            _withdrawStart > _mintEnd,
+            "claim period must proceed mint period"
+        );
+
+        raffleConfig.mintValue = _mintValue;
+        raffleConfig.depositStart = _depositStart;
+        raffleConfig.depositEnd = _depositEnd;
+        raffleConfig.mintStart = _mintStart;
+        raffleConfig.mintEnd = _mintEnd;
+        raffleConfig.withdrawStart = _withdrawStart;
+        raffleConfig.mintSupply = _mintSupply;
+        raffleConfig.minted = _minted;
     }
 
     function getRandomNumber() public onlyOwner returns (bytes32 requestId) {
@@ -77,17 +105,26 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
     }
 
     function fetchNonce() external onlyOwner returns (bytes32) {
-        require(block.timestamp >= depositEnd, "before deposit end time");
+        require(
+            block.timestamp >= raffleConfig.depositEnd,
+            "before deposit end time"
+        );
         return getRandomNumber();
     }
 
     /// @notice select winners
     /// @dev choose winner from raffle, remove winner from raffle, repeat
     function selectWinners(uint16 amount) public onlyOwner {
-        require(block.timestamp >= depositEnd, "before deposit end time");
-        require(block.timestamp < mintStart, "after mint start time");
+        require(
+            block.timestamp >= raffleConfig.depositEnd,
+            "before deposit end time"
+        );
+        require(
+            block.timestamp < raffleConfig.mintStart,
+            "after mint start time"
+        );
         require(fetchedNonce, "vrf not called yet");
-        require(minted + amount <= mintSupply, "out of mints");
+        require(minted + amount <= raffleConfig.mintSupply, "out of mints");
         uint16 length = uint16(raffle.length);
         uint256 nonce = nonceCache;
         for (uint16 i = 0; i < amount; i++) {
@@ -109,8 +146,14 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
 
     /// @notice receive ether from raffle participants
     receive() external payable {
-        require(block.timestamp >= depositStart, "before deposit start time");
-        require(block.timestamp < depositEnd, "after deposit end time");
+        require(
+            block.timestamp >= raffleConfig.depositStart,
+            "before deposit start time"
+        );
+        require(
+            block.timestamp < raffleConfig.depositEnd,
+            "after deposit end time"
+        );
         require(msg.value == MINT_VALUE, "incorrect amount");
         require(balances[msg.sender] == 0, "already deposited");
         balances[msg.sender] = msg.value;
@@ -120,7 +163,10 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
 
     /// @notice withdraw ether from raffle
     function withdraw() public payable {
-        require(block.timestamp > withdrawStart, "cannot withdraw yet");
+        require(
+            block.timestamp > raffleConfig.withdrawStart,
+            "cannot withdraw yet"
+        );
         uint256 amount = balances[msg.sender];
         require(amount > 0, "no balance");
         balances[msg.sender] = 0;
@@ -131,7 +177,10 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
 
     /// @notice owner withdraws ether from raffle
     function ownerWithdraw() public payable onlyOwner {
-        require(block.timestamp > withdrawStart, "cannot withdraw yet");
+        require(
+            block.timestamp > raffleConfig.withdrawStart,
+            "cannot withdraw yet"
+        );
         address mintAddress = address(this);
         uint256 amount = balances[mintAddress];
         require(amount > 0, "no balance");
@@ -153,7 +202,8 @@ contract RaffleMint is ERC721, VRFConsumerBase, Ownable {
     function _claimToken(address _to, uint256 _tokenId) internal {
         require(raffleWinners[_to], "caller did not win");
         require(
-            block.timestamp >= mintStart && mintEnd >= block.timestamp,
+            block.timestamp >= raffleConfig.mintStart &&
+                raffleConfig.mintEnd >= block.timestamp,
             "claiming is not active"
         );
 
