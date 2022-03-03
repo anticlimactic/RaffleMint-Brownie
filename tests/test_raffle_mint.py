@@ -209,7 +209,7 @@ def test_configure_raffle(test_contract, gov, chain):
             chain_time + WEEK,
             chain_time + WEEK,
             100,
-            0
+            0,
         )
 
     with brownie.reverts("mint period cannot start after end"):
@@ -221,7 +221,7 @@ def test_configure_raffle(test_contract, gov, chain):
             chain_time + DAY - 1,
             chain_time + WEEK,
             100,
-            0
+            0,
         )
 
     with brownie.reverts("claim period must proceed mint period"):
@@ -233,7 +233,7 @@ def test_configure_raffle(test_contract, gov, chain):
             chain_time + DAY + 1,
             chain_time + DAY - 1,
             100,
-            0
+            0,
         )
 
     depositEnd = chain_time + 1
@@ -251,16 +251,16 @@ def test_configure_raffle(test_contract, gov, chain):
         mintEnd,
         withdrawStart,
         mintSupply,
-        minted
+        minted,
     )
 
     raffle = test_contract.raffleConfig()
-    
-    assert MINT_PRICE == raffle['mintValue']
-    assert chain_time == raffle['depositStart']
-    assert depositEnd == raffle['depositEnd']
-    assert mintStart == raffle['mintStart']
-    assert mintEnd == raffle['mintEnd']
-    assert withdrawStart == raffle['withdrawStart']
-    assert mintSupply == raffle['mintSupply']
-    assert minted == raffle['minted']
+
+    assert MINT_PRICE == raffle["mintValue"]
+    assert chain_time == raffle["depositStart"]
+    assert depositEnd == raffle["depositEnd"]
+    assert mintStart == raffle["mintStart"]
+    assert mintEnd == raffle["mintEnd"]
+    assert withdrawStart == raffle["withdrawStart"]
+    assert mintSupply == raffle["mintSupply"]
+    assert minted == raffle["minted"]
