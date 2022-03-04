@@ -31,6 +31,9 @@ contract Raffle is Ownable, VRFConsumerBase {
     /// @notice Token contract.
     address public tokenContract;
 
+    /// @notice Value to determine if config is locked.
+    bool public locked;
+
     /// @notice Array of entrants in the raffle.
     address[] public entrants;
 
@@ -68,6 +71,8 @@ contract Raffle is Ownable, VRFConsumerBase {
         uint32 _mintStart,
         uint32 _withdrawStart
     ) public onlyOwner {
+        require(!locked, "contract is locked");
+        require(tokenContract != address(0), "token contract not set");
         require(
             _depositEnd > _depositStart,
             "deposit period cannot start after end"
@@ -87,6 +92,8 @@ contract Raffle is Ownable, VRFConsumerBase {
         raffle.mintStart = _mintStart;
         raffle.withdrawStart = _withdrawStart;
         raffle.totalWinners = _totalWinners;
+
+        locked = true;
     }
 
     /// @notice Function used to get a random number from VRF.
@@ -95,7 +102,7 @@ contract Raffle is Ownable, VRFConsumerBase {
         return requestRandomness(_keyHash, _fee);
     }
 
-    /// @notice Function used to uhhh... ???
+    /// @notice Fucntion used by oracle as a callback to fulfill our request for rng.
     function fulfillRandomness(bytes32, uint256 randomness) internal override {
         nonceCache = randomness;
         fetchedNonce = true;
@@ -132,9 +139,6 @@ contract Raffle is Ownable, VRFConsumerBase {
 
             uint256 rng = nonce % (length - i);
             address winner = entrants[rng];
-
-            entries[winner].amountDeposited = 0;
-            totalDepositAmount -= raffle.entryCost;
 
             entries[winner].hasWon = true;
 
@@ -207,6 +211,10 @@ contract Raffle is Ownable, VRFConsumerBase {
             "mintRaffle(address)",
             msg.sender
         );
+
+        entries[msg.sender].amountDeposited = 0;
+        totalDepositAmount -= raffle.entryCost;
+
         (bool success, ) = tokenContract.call(payload);
         require(success, "claim failed");
 
@@ -215,6 +223,7 @@ contract Raffle is Ownable, VRFConsumerBase {
 
     /// @notice Function used to set the winning token address.
     function setTokenContract(address tokenContract_) public onlyOwner {
+        require(!locked, "contract is locked");
         tokenContract = tokenContract_;
     }
 }
