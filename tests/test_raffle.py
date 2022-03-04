@@ -8,7 +8,9 @@ def test_raffle_deploy(raffle):
     assert raffle.address
 
 
-def test_configure_raffle(raffle, chain, alice, gov):
+def test_configure_raffle(raffle, mint, chain, alice, gov):
+
+    raffle.setTokenContract(mint.address, {"from": gov})
 
     entry_cost = 80000000000000000  # 0.08 Ether
     deposit_start = chain.time()
@@ -164,8 +166,10 @@ def test_select_winners(
     configured_raffle, link_token, mock_vrf_coordinator, gov, accounts, chain
 ):
     link_token.transfer(configured_raffle.address, 10**18, {"from": gov})
+
     chain.sleep(DAY)
     chain.mine()
+
     accounts = accounts[1:10]  # remove gov from account list
 
     for account in accounts:
@@ -173,6 +177,7 @@ def test_select_winners(
 
     with brownie.reverts("before deposit end time"):
         configured_raffle.fetchNonce({"from": gov})
+
     with brownie.reverts("before deposit end time"):
         configured_raffle.selectWinners(1, {"from": gov})
 
@@ -189,6 +194,7 @@ def test_select_winners(
     mock_vrf_coordinator.callBackWithRandomness(
         request_id, 777, configured_raffle.address, {"from": gov}
     )
+
     assert configured_raffle.nonceCache() > 0
     nonce = configured_raffle.nonceCache()
 
@@ -199,39 +205,24 @@ def test_select_winners(
 
     nonce = brownie.web3.toInt(brownie.web3.solidityKeccak(["uint256"], [nonce]))
     index = nonce % 9
-    assert configured_raffle.entries(accounts[index])["amountDeposited"] == 0
+
     event = tx.events["RaffleWinner"]
+
     assert event["addr"] == accounts[index]
     accounts.pop(index)
 
     configured_raffle.selectWinners(4, {"from": gov})
 
     assert configured_raffle.balance() == "0.72 ether"
-    assert (
-        configured_raffle.balance() - configured_raffle.totalDepositAmount()
-        == "0.4 ether"
-    )
-
-    for i in range(1, 4):
-        nonce = brownie.web3.toInt(brownie.web3.solidityKeccak(["uint256"], [nonce]))
-        index = nonce % (9 - i)
-        assert configured_raffle.entries(accounts[index])["amountDeposited"] == 0
-        accounts.pop(index)
 
     with brownie.reverts("out of mints"):
         configured_raffle.selectWinners(1, {"from": gov})
+
     with brownie.reverts("cannot withdraw yet"):
         configured_raffle.withdrawOwnerFunds({"from": gov})
 
     chain.sleep(4 * WEEK)
     chain.mine()
-
-    balance = gov.balance()
-    configured_raffle.withdrawOwnerFunds({"from": gov})
-    assert balance + "0.4 ether" == gov.balance()
-
-    with brownie.reverts("no balance"):
-        configured_raffle.withdrawOwnerFunds({"from": gov})
 
 
 def test_select_winners_after_mint_start(configured_raffle, gov, accounts, chain):
@@ -252,7 +243,6 @@ def test_claim_token(
     configured_raffle, mint, link_token, mock_vrf_coordinator, accounts, gov, chain
 ):
     mint.setRaffleContract(configured_raffle.address, {"from": gov})
-    configured_raffle.setTokenContract(mint.address, {"from": gov})
 
     chain.sleep(DAY)
     chain.mine()
@@ -288,6 +278,18 @@ def test_claim_token(
 
     assert mint.balanceOf(winner) == 1
 
+    balance = gov.balance()
+
+    chain.sleep(WEEK)
+    chain.mine()
+
+    configured_raffle.withdrawOwnerFunds({"from": gov})
+    assert balance + "0.08 ether" == gov.balance()
+
+    entry = configured_raffle.entries(winner.address)
+    assert entry["hasWon"] == True
+    assert entry["amountDeposited"] == 0
+
 
 def test_claim_token_reverts(
     configured_raffle, mint, link_token, mock_vrf_coordinator, alice, gov, chain
@@ -317,11 +319,7 @@ def test_claim_token_reverts(
 
     assert configured_raffle.entries(alice.address)["hasWon"]
 
-    with brownie.reverts("address not set"):
-        configured_raffle.claimToken({"from": alice})
-
     mint.setRaffleContract(configured_raffle.address, {"from": gov})
-    configured_raffle.setTokenContract(mint.address, {"from": gov})
     configured_raffle.claimToken({"from": alice})
 
     assert mint.balanceOf(alice) == 1

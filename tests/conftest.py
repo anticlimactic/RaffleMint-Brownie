@@ -28,8 +28,9 @@ def raffle(Raffle, mock_vrf_coordinator, link_token, gov):
 
 
 @pytest.fixture
-def configured_raffle(Raffle, chain, mock_vrf_coordinator, link_token, gov):
+def configured_raffle(Raffle, mint, chain, mock_vrf_coordinator, link_token, gov):
     raffle_contract = gov.deploy(Raffle, mock_vrf_coordinator, link_token, 0, 10**17)
+    raffle_contract.setTokenContract(mint.address, {"from": gov})
 
     chain_time = chain.time()
 
