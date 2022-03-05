@@ -213,6 +213,11 @@ def test_select_winners(
 
     configured_raffle.selectWinners(4, {"from": gov})
 
+    for i in range(1, 4):
+        nonce = brownie.web3.toInt(brownie.web3.solidityKeccak(["uint256"], [nonce]))
+        index = nonce % (9 - i)
+        assert configured_raffle.entries(accounts[index])["hasWon"] == True
+
     assert configured_raffle.balance() == "0.72 ether"
 
     with brownie.reverts("out of mints"):
@@ -323,3 +328,49 @@ def test_claim_token_reverts(
     configured_raffle.claimToken({"from": alice})
 
     assert mint.balanceOf(alice) == 1
+
+
+def test_locked_contract_state(raffle, mint, chain, gov):
+    entry_cost = 80000000000000000  # 0.08 Ether
+    deposit_start = chain.time()
+    total_winners = 5
+    deposit_end = deposit_start + WEEK
+    mint_start = deposit_end + 3 * DAY
+    withdraw_start = deposit_end + 2 * WEEK
+
+    with brownie.reverts("token contract not set"):
+        raffle.configureRaffle(
+            entry_cost,
+            total_winners,
+            deposit_start,
+            deposit_end,
+            mint_start,
+            withdraw_start,
+            {"from": gov},
+        )
+
+    raffle.setTokenContract(mint.address, {"from": gov})
+
+    raffle.configureRaffle(
+        entry_cost,
+        total_winners,
+        deposit_start,
+        deposit_end,
+        mint_start,
+        withdraw_start,
+        {"from": gov},
+    )
+
+    with brownie.reverts("contract is locked"):
+        raffle.configureRaffle(
+            entry_cost,
+            total_winners,
+            deposit_start,
+            deposit_end,
+            mint_start,
+            withdraw_start,
+            {"from": gov},
+        )
+
+    with brownie.reverts("contract is locked"):
+        raffle.setTokenContract(mint.address, {"from": gov})
